@@ -1,4 +1,4 @@
-const Poll = require('../models/Poll');
+const Poll = require('../models/poll');
 
 exports.checkPollStatus = async (req, res, next) => {
   try {
