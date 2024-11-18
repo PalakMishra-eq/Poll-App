@@ -11,7 +11,7 @@ const generateToken = (user) => jwt.sign({ id: user._id, role: user.role }, proc
 
 exports.signUp = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password } = req.body;
     const user = new User({ username, email, password, role });
     await user.save();
     res.status(201).json({ message: 'User registered successfully' });
