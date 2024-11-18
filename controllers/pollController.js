@@ -121,7 +121,7 @@ exports.getPollResults = async (req, res) => {
       }
   
       // Fetch all votes for this poll
-      const votes = await Vote.find({ pollId, voterId: req.user.id });
+      const votes = await Vote.find({pollId: poll._id});
   
       // Poll-based insights
       const pollResults = poll.choices.map((choice) => {
@@ -155,6 +155,55 @@ exports.getPollResults = async (req, res) => {
       res.status(500).json({ error: 'Failed to retrieve poll results' });
     }
   };
+
+// // Controller for poll-based insights
+// exports.getPollResults = async (req, res) => {
+//   try {
+//     const { pollId } = req.params;
+
+//     // Retrieve the poll by ID
+//     const poll = await Poll.findById(pollId);
+//     if (!poll) {
+//       return res.status(404).json({ error: 'Poll not found' });
+//     }
+
+//     // Fetch all votes for this poll
+//     const votes = await Vote.find({ pollId }).populate('userId', 'name email'); // Populate user details for insights
+
+//     // Poll-based insights
+//     const pollResults = poll.choices.map((choice) => {
+//       const voteCount = votes.filter((vote) => vote.choiceId.toString() === choice._id.toString()).length;
+//       return {
+//         choice: choice.text,
+//         votes: voteCount,
+//       };
+//     });
+
+//     // Voter-based insights
+//     const voterInsights = votes.map((vote) => ({
+//       voter: {
+//         name: vote.userId?.name || 'Unknown',
+//         email: vote.userId?.email || 'Unknown',
+//       },
+//       choice: vote.choiceId, // This contains the choice ID
+//     }));
+
+//     const insights = {
+//       totalVotes: votes.length,
+//       pollResults,
+//       voterInsights,
+//       pollType: poll.pollType,
+//       expirationDate: poll.expirationDate,
+//       active: poll.active,
+//     };
+
+//     res.json(insights);
+//   } catch (error) {
+//     console.error('Error in getPollResults:', error.message); // Log error for debugging
+//     res.status(500).json({ error: 'Failed to retrieve poll results' });
+//   }
+// };
+
 
   exports.getUserVote = async (req, res) => {
     try {
