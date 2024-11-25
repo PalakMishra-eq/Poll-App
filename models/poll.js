@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const pollSchema = new mongoose.Schema({
+  title: { type: String, required: true },
   question: { type: String, required: true },
   choices: [
     {
@@ -18,5 +19,11 @@ const pollSchema = new mongoose.Schema({
 pollSchema.methods.isExpired = function() {
   return new Date() > this.expirationDate;
 };
+// pollSchema.virtual('status').get(function () {
+//   const now = new Date();
+//   if (this.expirationDate < now) return 'expired';
+//   if (this.active) return 'active';
+//   return 'upcoming';
+// });
 
 module.exports = mongoose.model('Poll', pollSchema);

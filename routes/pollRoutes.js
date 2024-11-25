@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { auth, roleAuthorization } = require('../middlewares/authMiddleware');
 const { checkPollStatus } = require('../middlewares/pollMiddleware');
-const { createPoll, voteOnPoll, deletePoll, getPollResults, getUserVote } = require('../controllers/pollController');
+const { createPoll, voteOnPoll, deletePoll, getPollResults, searchPolls } = require('../controllers/pollController');
 
 // Route for admins to create a poll
 router.post('/create', auth,  roleAuthorization(['Admin']), createPoll);
@@ -17,6 +17,11 @@ router.delete('/:pollId/delete', auth,  roleAuthorization(['Admin']), deletePoll
 router.get('/:pollId/results', auth,  roleAuthorization(['Admin']), getPollResults);
 
 // Route for users to view their own vote for a specific poll
-router.get('/:pollId/my-vote', auth, roleAuthorization(['Voter', 'Admin']), getUserVote);
+//router.get('/:pollId/my-vote', auth, roleAuthorization(['Voter', 'Admin']), getUserVote);
+
+router.get('/polls', searchPolls); 
+
+// Search and filter polls
+router.get('/', searchPolls);
 
 module.exports = router;

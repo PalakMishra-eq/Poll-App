@@ -5,7 +5,7 @@ const mongoose= require('mongoose');
 
 exports.createPoll = async (req, res) => {
   try {
-    const { question, choices, pollType, startDate, expirationDate } = req.body;
+    const { title, question, choices, pollType, startDate, expirationDate } = req.body;
 
     if (new Date(startDate) >= new Date(expirationDate)) {
         return res.status(400).json({ error: 'Start date must be before expiration date.' });
@@ -34,6 +34,7 @@ exports.createPoll = async (req, res) => {
 
     // Create poll
     const poll = new Poll({
+      title,
       question,
       choices: formattedChoices,
       pollType,
@@ -156,96 +157,41 @@ exports.getPollResults = async (req, res) => {
     }
   };
 
-// // Controller for poll-based insights
-// exports.getPollResults = async (req, res) => {
-//   try {
-//     const { pollId } = req.params;
+  // Controller for poll search, filter, and sort
+exports.searchPolls = async (req, res) => {
+  try {
+    console.log('Search polls called with query:', req.query);
+    const { search = '', status, sortBy = 'expirationDate', sortOrder = 'asc' } = req.query;
 
-//     // Retrieve the poll by ID
-//     const poll = await Poll.findById(pollId);
-//     if (!poll) {
-//       return res.status(404).json({ error: 'Poll not found' });
-//     }
+    const now = new Date();
 
-//     // Fetch all votes for this poll
-//     const votes = await Vote.find({ pollId }).populate('userId', 'name email'); // Populate user details for insights
+    // Base query to match search term
+    const query = {
+      title: { $regex: search, $options: 'i' }, // Case-insensitive search
+    };
 
-//     // Poll-based insights
-//     const pollResults = poll.choices.map((choice) => {
-//       const voteCount = votes.filter((vote) => vote.choiceId.toString() === choice._id.toString()).length;
-//       return {
-//         choice: choice.text,
-//         votes: voteCount,
-//       };
-//     });
-
-//     // Voter-based insights
-//     const voterInsights = votes.map((vote) => ({
-//       voter: {
-//         name: vote.userId?.name || 'Unknown',
-//         email: vote.userId?.email || 'Unknown',
-//       },
-//       choice: vote.choiceId, // This contains the choice ID
-//     }));
-
-//     const insights = {
-//       totalVotes: votes.length,
-//       pollResults,
-//       voterInsights,
-//       pollType: poll.pollType,
-//       expirationDate: poll.expirationDate,
-//       active: poll.active,
-//     };
-
-//     res.json(insights);
-//   } catch (error) {
-//     console.error('Error in getPollResults:', error.message); // Log error for debugging
-//     res.status(500).json({ error: 'Failed to retrieve poll results' });
-//   }
-// };
-
-
-  exports.getUserVote = async (req, res) => {
-    try {
-      const { pollId } = req.params;
-      const userId= req.user.id;
-  
-      // Check if poll exists
-      const poll = await Poll.findById(pollId);
-      if (!poll) {
-        return res.status(404).json({ message: 'Poll not found' });
-      }
-  
-      // Ensure `pollId` and `voterId` are passed as ObjectId
-    const userVotes = await Vote.find({
-      pollId: new mongoose.Types.ObjectId(pollId) ,
-      voterId: new mongoose.Types.ObjectId(userId),
-    });
-  
-    console.log(pollId);
-    console.log(voterId);
-    
-    console.log(userVotes);
-
-      if (userVotes.length === 0) {
-        return res.status(404).json({ message: 'No votes found for this poll by the current user' });
-      }
-  
-      // Map user votes to choices
-      const userVoteDetails = userVotes.map((vote) => {
-        const choice = poll.choices.find((choice) => choice._id.toString() === vote.choiceId.toString());
-        return {
-          choice: choice ? choice.text : 'Choice no longer exists',
-          choiceId: vote.choiceId,
-        };
-      });
-  
-      res.json({
-        poll: poll.title,
-        votes: userVoteDetails,
-      });
-    } catch (error) {
-      console.error('Error in getUserVote:', error.message);
-      res.status(500).json({ message: 'Failed to fetch user votes', error: error.message });
+    // Add status filter if specified
+    if (status === 'active') {
+      query.active = true;
+      query.expirationDate = { $gte: now };
+    } else if (status === 'expired') {
+      query.expirationDate = { $lt: now };
+    } else if (status === 'upcoming') {
+      query.active = false;
+      query.expirationDate = { $gte: now };
     }
-  };
+
+    // Sort options
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Fetch polls
+    const polls = await Poll.find(query).sort(sortOptions);
+    console.log('Polls fetched:', polls);
+
+    res.status(200).json(polls);
+  } catch (error) {
+    console.error('Error fetching polls:', error.message);
+    res.status(500).json({ error: 'Failed to fetch polls' });
+  }
+};
