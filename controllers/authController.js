@@ -1,10 +1,11 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+//const nodemailer = require('nodemailer');
 require('dotenv').config();
-const { sendMail } = require('../utils/mailer');//
-const crypto = require('crypto'); //
+//const { sendMail } = require('../utils/mailer');//
+
 
 // Generate JWT
 const generateToken = (user) => jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -92,3 +93,4 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ error: 'Failed to reset password' });
   }
 };
+

@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema({
   securityAnswer: { type: String, required: true },  // Store hashed security answer for additional security
   resetPasswordToken: {type: String} ,
   resetPasswordExpires: {type: Date},
+  profilePicture: { type: String, default: null },
+  bio: {type: String, default: ''},
+  interests: {type: [String], default: []},
 });
 
 // Hash password before saving
