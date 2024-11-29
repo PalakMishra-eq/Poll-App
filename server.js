@@ -26,6 +26,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/polls', require('./routes/pollRoutes'));
 app.use('/account', require('./routes/recoverAccount'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/votes', require('./routes/pollRoutes'));
 // Error Handling for Unhandled Routes
 app.use((req, res) => {
     res.status(404).json({ error: 'Endpoint not found' });

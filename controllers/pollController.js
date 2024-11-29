@@ -76,7 +76,7 @@ exports.voteOnPoll = async (req, res) => {
       const userId = req.user.id; // User ID from auth token new
   
       // Check if the user has already voted on this poll
-    const existingVote = await Vote.findOne({ userId, pollId: poll._id });
+    const existingVote = await Vote.findOne({ userId, pollId: poll._id.toString() });
     if (existingVote) {
       return res.status(403).json({ error: 'You have already voted on this poll' });
     }
@@ -98,8 +98,8 @@ exports.voteOnPoll = async (req, res) => {
       // Record this user's vote in the Vote model
     const newVote = new Vote({
         userId,
-        pollId: poll._id,
-        choiceIds,
+        pollId: poll._id.toString(),
+        choiceIds: choiceIds.map((id) => id.toString()),
       });
       await newVote.save();
 
@@ -193,5 +193,55 @@ exports.searchPolls = async (req, res) => {
   } catch (error) {
     console.error('Error fetching polls:', error.message);
     res.status(500).json({ error: 'Failed to fetch polls' });
+  }
+};
+
+
+// Get polls voted by the user
+exports.getUserVotes = async (req, res) => {
+  try {
+    const userId = req.user.id; // Authenticated user's ID
+
+    // Find all votes by the user (no ObjectId conversion needed)
+    const userVotes = await Vote.find({ userId });
+    console.log('uid', userId );
+    //console.log('vid', voterId );
+
+    console.log('uservotes', userVotes);
+
+    if (userVotes.length === 0) {
+      return res.status(404).json({ message: 'No votes found for this user' });
+    }
+
+    // Fetch the poll details for each vote
+    const pollsWithChoices = await Promise.all(
+      userVotes.map(async (vote) => {
+        const poll = await Poll.findById(vote.pollId); // Query by pollId as string
+
+        if (!poll) {
+          return null; // Handle edge case if a poll is deleted
+        }
+
+        return {
+          pollTitle: poll.title,
+          pollDescription: poll.description,
+          votedChoice: poll.choices.filter((choice) =>
+            vote.choiceIds.includes(choice._id.toString())
+          ),
+        };
+      })
+    );
+
+    // Filter out null values in case of deleted polls
+    const filteredPolls = pollsWithChoices.filter((poll) => poll !== null);
+    console.log('also wont work', filteredPolls );
+
+    res.status(200).json({
+      message: 'User votes retrieved successfully',
+      polls: filteredPolls,
+    });
+  } catch (error) {
+    console.error('Error fetching user votes:', error);
+    res.status(500).json({ error: 'Failed to retrieve user votes' });
   }
 };
