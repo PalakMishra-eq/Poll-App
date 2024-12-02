@@ -122,36 +122,69 @@ exports.getPollResults = async (req, res) => {
       }
   
       // Fetch all votes for this poll
-      const votes = await Vote.find({pollId: poll._id});
+      const votes = await Vote.find({pollId: pollId.toString()});
+
+      if (votes.length === 0) {
+        return res.status(404).json({ message: 'No votes found for this poll' });
+      }
   
-      // Poll-based insights
-      const pollResults = poll.choices.map((choice) => {
-        const voteCount = votes.filter((vote) => vote.choiceIds.includes(choice._id)).length;
-        return {
-          choice: choice.text,
-          votes: voteCount,
-        };
-      });
+      // Calculate total votes
+      const totalVotes = votes.length;
   
-      // Voter-based insights
-      const voterInsights = votes.map((vote) => ({
-        voter: {
-          name: vote.userId.name,
-          email: vote.userId.email,
-        },
-        choices: vote.choiceIds, // This contains choice IDs; can be populated if needed
-      }));
+      // // Poll-based insights
+      // const pollResults = poll.choices.map((choice) => {
+      //   const voteCount = votes.filter((vote) => vote.choiceIds.includes(choice._id)).length;
+      //   return {
+      //     choice: choice.text,
+      //     votes: voteCount,
+      //   };
+      // });
   
-      const insights = {
-        totalVotes: votes.length,
-        pollResults,
-        voterInsights,
-        pollType: poll.pollType,
-        expirationDate: poll.expirationDate,
-        active: poll.active,
+      // // Voter-based insights
+      // const voterInsights = votes.map((vote) => ({
+      //   voter: {
+      //     name: vote.userId.name,
+      //     email: vote.userId.email,
+      //   },
+      //   choices: vote.choiceIds, // This contains choice IDs; can be populated if needed
+      // }));
+  
+      // const insights = {
+      //   totalVotes: votes.length,
+      //   pollResults,
+      //   voterInsights,
+      //   pollType: poll.pollType,
+      //   expirationDate: poll.expirationDate,
+      //   active: poll.active,
+      // };
+
+      // Calculate results for each choice
+    const pollResults = poll.choices.map((choice) => {
+      // Get user IDs who voted for this choice
+      const users = votes
+        .filter((vote) => vote.choiceIds.includes(choice._id.toString()))
+        .map((vote) => vote.userId);
+
+      // Calculate percentage of votes for this choice
+      const voteCount = users.length;
+      const percentage = totalVotes > 0 ? ((voteCount / totalVotes) * 100).toFixed(2) : 0;
+
+      return {
+        choiceText: choice.text,
+        voteCount,
+        percentage: `${percentage}%`,
+        users, // List of user IDs
       };
+    });
   
-      res.json(insights);
+      //res.json(insights);
+      // Construct response
+    res.status(200).json({
+      pollTitle: poll.title,
+      pollDescription: poll.description,
+      totalVotes,
+      results: pollResults,
+    });
     } catch (error) {
       res.status(500).json({ error: 'Failed to retrieve poll results' });
     }
