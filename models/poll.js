@@ -14,6 +14,8 @@ const pollSchema = new mongoose.Schema({
   startDate: { type: Date, default: Date.now },      // When the poll should start
   expirationDate: { type: Date, required: true },    // When the poll expires
   isActive: { type: Boolean, default: true },        // To check if poll is active
+  reports: { type: Number, default: 0 }, // Number of reports
+  reportedBy: [{ type: String }], // Array of user IDs who reported
 });
 
 pollSchema.methods.isExpired = function() {

@@ -278,3 +278,44 @@ exports.getUserVotes = async (req, res) => {
     res.status(500).json({ error: 'Failed to retrieve user votes' });
   }
 };
+
+
+
+exports.reportPoll = async (req, res) => {
+  try {
+    const { pollId } = req.params;
+    const userId = req.user.id; // User ID from the auth token
+
+    // Find the poll
+    const poll = await Poll.findById(pollId);
+    if (!poll) {
+      return res.status(404).json({ error: 'Poll not found' });
+    }
+
+    // Check if the user has already reported this poll
+    if (poll.reportedBy.includes(userId)) {
+      return res.status(403).json({ error: 'You have already reported this poll' });
+    }
+
+    // Increment the report count and add the user to the reportedBy array
+    poll.reports += 1;
+    poll.reportedBy.push(userId);
+
+    // If the poll is reported 2 times, mark it as expired
+    if (poll.reports >= 2) {
+      poll.active = false; // Mark the poll as inactive
+      poll.expirationDate = new Date(); // Optionally, set expiration date to now
+    }
+
+    // Save the updated poll
+    await poll.save();
+
+    res.status(200).json({
+      message: poll.reports >= 2 ? 'Poll has been disabled due to reports' : 'Poll reported successfully',
+      poll,
+    });
+  } catch (error) {
+    console.error('Error reporting poll:', error);
+    res.status(500).json({ error: 'Failed to report poll' });
+  }
+};
