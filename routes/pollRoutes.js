@@ -3,12 +3,13 @@ const router = express.Router();
 const { auth, roleAuthorization } = require('../middlewares/authMiddleware');
 const { checkPollStatus } = require('../middlewares/pollMiddleware');
 const { createPoll, voteOnPoll, deletePoll, getPollResults, searchPolls, getUserVotes, reportPoll } = require('../controllers/pollController');
+const rateLimiter = require('../middlewares/rateLimiterMiddleware');
 
 // Route for admins to create a poll
 router.post('/create', auth,  roleAuthorization(['Admin']), createPoll);
 
 // Route to vote on a poll (restricted to active polls)
-router.post('/:pollId/vote', auth, checkPollStatus,  roleAuthorization(['Voter']), voteOnPoll);
+router.post('/:pollId/vote', auth, checkPollStatus, rateLimiter,  roleAuthorization(['Voter']), voteOnPoll);
 
 // Route for admins to delete a specific poll
 router.delete('/:pollId/delete', auth,  roleAuthorization(['Admin']), deletePoll);
