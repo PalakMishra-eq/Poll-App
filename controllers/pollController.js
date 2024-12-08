@@ -2,7 +2,7 @@ const Poll = require('../models/poll');
 const Vote = require('../models/vote');
 const User = require('../models/User');
 const mongoose= require('mongoose');
-
+const {sendMail} = require('../utils/mailer');
 
 exports.createPoll = async (req, res) => {
   try {
@@ -132,35 +132,9 @@ exports.getPollResults = async (req, res) => {
       // Calculate total votes
       const totalVotes = votes.length;
   
-      // // Poll-based insights
-      // const pollResults = poll.choices.map((choice) => {
-      //   const voteCount = votes.filter((vote) => vote.choiceIds.includes(choice._id)).length;
-      //   return {
-      //     choice: choice.text,
-      //     votes: voteCount,
-      //   };
-      // });
-  
-      // // Voter-based insights
-      // const voterInsights = votes.map((vote) => ({
-      //   voter: {
-      //     name: vote.userId.name,
-      //     email: vote.userId.email,
-      //   },
-      //   choices: vote.choiceIds, // This contains choice IDs; can be populated if needed
-      // }));
-  
-      // const insights = {
-      //   totalVotes: votes.length,
-      //   pollResults,
-      //   voterInsights,
-      //   pollType: poll.pollType,
-      //   expirationDate: poll.expirationDate,
-      //   active: poll.active,
-      // };
 
       // Calculate results for each choice
-    const pollResults = poll.choices.map((choice) => {
+    let pollResults = poll.choices.map((choice) => {
       // Get user IDs who voted for this choice
       const users = votes
         .filter((vote) => vote.choiceIds.includes(choice._id.toString()))
@@ -168,18 +142,25 @@ exports.getPollResults = async (req, res) => {
 
       // Calculate percentage of votes for this choice
       const voteCount = users.length;
-      const percentage = totalVotes > 0 ? ((voteCount / totalVotes) * 100).toFixed(2) : 0;
+      const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
 
       return {
         choiceText: choice.text,
         voteCount,
-        percentage: `${percentage}%`,
+        percentage ,//`${percentage}%`
         users, // List of user IDs
       };
     });
-  
-      //res.json(insights);
-      // Construct response
+
+    console.log('Poll results before sorting:', pollResults);
+
+    //try {
+      pollResults = pollResults.sort((a, b) => b.percentage - a.percentage);
+   
+
+    console.log('Poll results after sorting:', pollResults);
+    
+    
     res.status(200).json({
       pollTitle: poll.title,
       pollDescription: poll.description,
@@ -190,6 +171,8 @@ exports.getPollResults = async (req, res) => {
       res.status(500).json({ error: 'Failed to retrieve poll results' });
     }
   };
+
+
 
   // Controller for poll search, filter, and sort
 exports.searchPolls = async (req, res) => {
@@ -306,8 +289,24 @@ exports.reportPoll = async (req, res) => {
     if (poll.reports >= 2) {
       poll.active = false; // Mark the poll as inactive
       poll.expirationDate = new Date(); // Optionally, set expiration date to now
+      // Fetch the admin's email from the User model
+    const admin = await User.findById(poll.createdBy);
+    console.log("admin", admin);
+    if (admin && admin.email) {
+      // Send email to the admin
+      const subject = `Poll Locked: ${poll.title}`;
+      const text = `Dear ${admin.username},\n\n` +
+                   `Your poll "${poll.title}" has been reported and locked due to multiple reports.\n` +
+                   `Please review the poll to address any concerns.\n\n` +
+                   `Regards,\nPoll App Team`;
+
+      await sendMail(admin.email, subject, text);
     }
 
+    }
+
+
+    
     // Save the updated poll
     await poll.save();
 
@@ -318,5 +317,66 @@ exports.reportPoll = async (req, res) => {
   } catch (error) {
     console.error('Error reporting poll:', error);
     res.status(500).json({ error: 'Failed to report poll' });
+  }
+};
+
+
+
+exports.notifyUsersAboutPolls = async () => {
+  try {
+    const currentDate = new Date();
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(currentDate.getDate() + 3);
+
+    // Query for polls that are active and about to expire or upcoming
+    const pollsToNotify = await Poll.find({
+      $or: [
+        {
+          active: true,
+          expirationDate: { $gte: currentDate, $lte: threeDaysFromNow }, // Active and about to expire
+        },
+        {
+          active: false,
+          startDate: { $gte: currentDate, $lte: threeDaysFromNow }, // Upcoming polls
+        },
+      ],
+    });
+
+    if (pollsToNotify.length === 0) {
+      console.log('No polls to notify users about.');
+      return;
+    }
+
+    // Fetch all registered users' emails
+    const users = await User.find({}, 'email');
+    const emailList = users.map((user) => user.email);
+
+    if (emailList.length === 0) {
+      console.log('No registered users to notify.');
+      return;
+    }
+
+    // Construct email content
+    const pollDetails = pollsToNotify.map((poll) => {
+      const status = poll.active ? 'Active (about to expire)' : 'Upcoming';
+      return `Title: ${poll.title}, Status: ${status}, Date: ${poll.active ? poll.expirationDate : poll.startDate}`;
+    });
+
+    const emailContent = `
+      <h2>Poll Notifications</h2>
+      <p>Here are the polls within the 3-day range:</p>
+      <ul>${pollDetails.map((detail) => `<li>${detail}</li>`).join('')}</ul>
+    `;
+
+    // Send email
+    await sendMail(
+      emailList,
+      'Poll Notifications',
+      emailContent
+    );
+
+    console.log('Poll notifications sent successfully.');
+  } catch (error) {
+    console.error('Error in notifying users about polls:', error.message);
   }
 };

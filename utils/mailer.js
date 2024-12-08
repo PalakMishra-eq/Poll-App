@@ -83,18 +83,18 @@ const sendMail = async (to, subject, text) => {
   }
 };
 
-(async () => {
-  try {
-    console.log("sentMailer", "started");
-    const sent = await sendMail(
-      "palakmishra170101+pollapp@gmail.com",
-      "test",
-      "test mail sent at " + new Date().toLocaleString()
-    );
-    console.log("sendMail", sent);
-  } catch (err) {
-    console.error("sendMail", err);
-  }
-})();
+// (async () => {
+//   try {
+//     console.log("sentMailer", "started");
+//     const sent = await sendMail(
+//       "palakmishra170101+pollapp@gmail.com",
+//       "test",
+//       "test mail sent at " + new Date().toLocaleString()
+//     );
+//     console.log("sendMail", sent);
+//   } catch (err) {
+//     console.error("sendMail", err);
+//   }
+// })();
 
 module.exports = { sendMail };

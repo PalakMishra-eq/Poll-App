@@ -15,10 +15,13 @@ exports.uploadProfilePicture = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    user.profilePicture = req.file.path;
+    user.profilePicture =  `/uploads/${req.file.filename}`;
     await user.save();
 
-    res.status(200).json({ message: 'Profile picture uploaded successfully', profilePicture: req.file.path });
+    res.status(200).json({ 
+      message: 'Profile picture uploaded successfully', 
+      profilePicture: user.profilePicture,
+     });
   } catch (error) {
     console.error('Error uploading profile picture:', error);
     res.status(500).json({ error: 'Failed to upload profile picture' });
@@ -26,23 +29,34 @@ exports.uploadProfilePicture = async (req, res) => {
 };
 
 // Update Bio
-exports.updateBio = async (req, res) => {
-    console.log('Inside updateBio function');
+exports.updateBioAndInterests = async (req, res) => {
+    console.log('Inside updateBioInterests function');
   try {
-    const { bio } = req.body;
+    const { bio, interests } = req.body;
     const userId = req.user.id;
 
-    console.log('Bio:', bio, 'User ID:', userId);
+    console.log('Bio:', bio, 'User ID:', userId, 'interests:', interests);
+
+    // Validate input
+    if (!bio && (!interests || !Array.isArray(interests))) {
+      return res.status(400).json({ error: 'Bio or interests must be provided' });
+    }
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    user.bio = bio;
+    // Update bio and interests
+    if (bio) user.bio = bio;
+    if (interests) user.interests = interests;
+
     await user.save();
 
-    res.status(200).json({ message: 'Bio updated successfully', bio });
+    res.status(200).json({ message: 'Profile updated successfully',
+      bio: user.bio,
+      interests: user.interests,
+     });
   } catch (error) {
     console.error('Error updating bio:', error);
     res.status(500).json({ error: 'Failed to update bio' });
