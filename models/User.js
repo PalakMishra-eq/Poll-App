@@ -6,8 +6,6 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['Admin', 'Voter'], default: 'Voter' },
-  securityQuestion: { type: String, required: true }, // e.g., "What was the name of your first pet?"
-  securityAnswer: { type: String, required: true },  // Store hashed security answer for additional security
   resetPasswordToken: {type: String} ,
   resetPasswordExpires: {type: Date},
   profilePicture: { type: String, default: null },
