@@ -325,18 +325,29 @@ exports.reportPoll = async (req, res) => {
 exports.notifyUsersAboutPolls = async () => {
   try {
     const currentDate = new Date();
+    // const oneDayFromNow = new Date();
+    // const twoDaysFromNow = new Date();
     const threeDaysFromNow = new Date();
+    // oneDayFromNow.setDate(currentDate.getDate() + 1);
+    // twoDaysFromNow.setDate(currentDate.getDate() + 2);
     threeDaysFromNow.setDate(currentDate.getDate() + 3);
+
+    console.log('Current date:', currentDate);
+    console.log('Three days from now:', threeDaysFromNow);
+
+    const allPolls = await Poll.find({});
+console.log('All polls in database:', JSON.stringify(allPolls, null, 2));
+
 
     // Query for polls that are active and about to expire or upcoming
     const pollsToNotify = await Poll.find({
       $or: [
         {
-          active: true,
+          isActive: true,
           expirationDate: { $gte: currentDate, $lte: threeDaysFromNow }, // Active and about to expire
         },
         {
-          active: false,
+          isActive: false,
           startDate: { $gte: currentDate, $lte: threeDaysFromNow }, // Upcoming polls
         },
       ],
@@ -347,9 +358,19 @@ exports.notifyUsersAboutPolls = async () => {
       return;
     }
 
+    console.log('Matching polls:', pollsToNotify);
+    console.log('Matching polls:', JSON.stringify(pollsToNotify, null, 2));
+
+
     // Fetch all registered users' emails
     const users = await User.find({}, 'email');
+    //const users = await User.find({}, 'email');
+console.log('Registered users:', JSON.stringify(users, null, 2));
+
     const emailList = users.map((user) => user.email);
+
+    console.log('Registered users:', emailList);
+
 
     if (emailList.length === 0) {
       console.log('No registered users to notify.');
@@ -359,7 +380,7 @@ exports.notifyUsersAboutPolls = async () => {
     // Construct email content
     const pollDetails = pollsToNotify.map((poll) => {
       const status = poll.active ? 'Active (about to expire)' : 'Upcoming';
-      return `Title: ${poll.title}, Status: ${status}, Date: ${poll.active ? poll.expirationDate : poll.startDate}`;
+      return `Title: ${poll.title}, Status: ${status}, Date: ${poll.active ? poll.expirationDate.toISOString() : poll.startDate.toISOString()}`;
     });
 
     const emailContent = `
@@ -367,15 +388,27 @@ exports.notifyUsersAboutPolls = async () => {
       <p>Here are the polls within the 3-day range:</p>
       <ul>${pollDetails.map((detail) => `<li>${detail}</li>`).join('')}</ul>
     `;
-
+    try{
     // Send email
     await sendMail(
       emailList,
       'Poll Notifications',
       emailContent
     );
+    // try{
+    // await sendMail(
+    //   'palakmishra170101@gmail.com',
+    //   'Poll Notifications',
+    //   '<p>This is a test email</p>'
+    // );
+
+    console.log('Email payload:', { to, subject, text });
+
 
     console.log('Poll notifications sent successfully.');
+  } catch(error){
+    console.log('error sending email', error.message);
+  }
   } catch (error) {
     console.error('Error in notifying users about polls:', error.message);
   }

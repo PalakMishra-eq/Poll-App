@@ -17,7 +17,18 @@ cron.schedule('0 9 * * *', async () => {
   await notifyUsersAboutPolls();
 });
 
-notifyUsersAboutPolls();
+
+
+(async () => {
+  try {
+    console.log('Starting poll notification test...');
+    await notifyUsersAboutPolls();
+    console.log('Poll notification test completed.');
+  } catch (error) {
+    console.error('Error in poll notification test:', error.message);
+  }
+})();
+
 
 
 // Log incoming requests (move this higher)
