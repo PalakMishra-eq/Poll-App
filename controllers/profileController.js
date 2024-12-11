@@ -63,56 +63,28 @@ exports.updateBioAndInterests = async (req, res) => {
   }
 };
 
-
-// Manage Interests
-exports.addInterest = async (req, res) => {
-  try {
-    const { interest } = req.body;
+exports.getUserProfile = async (req, res) => {
+  try{
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const user = await User.findById(userId, 'profilePicture bio interests username email');
+    if (!user){
+      return res.status(404).json({error: 'User not found'});
 
-    if (!user.interests.includes(interest)) {
-      user.interests.push(interest);
-      await user.save();
     }
 
-    res.status(200).json({ message: 'Interest added successfully', interests: user.interests });
+
+    const profileData= {
+      username: user.username,
+      email: user.email,
+      profilePicture: 'http://localhost:5000'+user.profilePicture || '',
+      bio: user.bio || '',
+      interests: user.interests || [],
+
+    };
+    res.status(200).json(profileData);
   } catch (error) {
-    console.error('Error adding interest:', error);
-    res.status(500).json({ error: 'Failed to add interest' });
-  }
-};
-
-exports.removeInterest = async (req, res) => {
-  try {
-    const { interest } = req.body;
-    const userId = req.user.id;
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    user.interests = user.interests.filter((i) => i !== interest);
-    await user.save();
-
-    res.status(200).json({ message: 'Interest removed successfully', interests: user.interests });
-  } catch (error) {
-    console.error('Error removing interest:', error);
-    res.status(500).json({ error: 'Failed to remove interest' });
-  }
-};
-
-exports.listInterests = async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    res.status(200).json({ interests: user.interests });
-  } catch (error) {
-    console.error('Error listing interests:', error);
-    res.status(500).json({ error: 'Failed to list interests' });
+    console.error('Error fetching user profile:', error.message);
+    res.status(500).json({error: 'Failed to fetch user profile'});
   }
 };

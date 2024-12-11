@@ -214,44 +214,118 @@ exports.searchPolls = async (req, res) => {
 };
 
 
+// // Get polls voted by the user
+// exports.getUserVotes = async (req, res) => {
+//   try {
+//     const userId = req.user.id; // Authenticated user's ID
+
+//     // Find all votes by the user (no ObjectId conversion needed)
+//     const userVotes = await Vote.find({ userId });
+//     console.log('uid', userId );
+//     //console.log('vid', voterId );
+
+//     console.log('uservotes', userVotes);
+
+//     if (userVotes.length === 0) {
+//       return res.status(404).json({ message: 'No votes found for this user' });
+//     }
+
+//     // Fetch the poll details for each vote
+//     const pollsWithChoices = await Promise.all(
+//       userVotes.map(async (vote) => {
+//         const poll = await Poll.findById(vote.pollId); // Query by pollId as string
+
+//         if (!poll) {
+//           return null; // Handle edge case if a poll is deleted
+//         }
+
+//         return {
+//           pollTitle: poll.title,
+//           pollDescription: poll.description,
+//           votedChoice: poll.choices.filter((choice) =>
+//             vote.choiceIds.includes(choice._id.toString())
+//           ),
+//         };
+//       })
+//     );
+
+//     // Filter out null values in case of deleted polls
+//     const filteredPolls = pollsWithChoices.filter((poll) => poll !== null);
+//     console.log('also wont work', filteredPolls );
+
+//     res.status(200).json({
+//       message: 'User votes retrieved successfully',
+//       polls: filteredPolls,
+//     });
+//   } catch (error) {
+//     console.error('Error fetching user votes:', error);
+//     res.status(500).json({ error: 'Failed to retrieve user votes' });
+//   }
+// };
+
 // Get polls voted by the user
 exports.getUserVotes = async (req, res) => {
   try {
     const userId = req.user.id; // Authenticated user's ID
 
-    // Find all votes by the user (no ObjectId conversion needed)
+    // Find all votes by the user
     const userVotes = await Vote.find({ userId });
-    console.log('uid', userId );
-    //console.log('vid', voterId );
-
-    console.log('uservotes', userVotes);
+    console.log('User ID:', userId);
+    console.log('User Votes:', userVotes);
 
     if (userVotes.length === 0) {
       return res.status(404).json({ message: 'No votes found for this user' });
     }
 
-    // Fetch the poll details for each vote
+    // Fetch poll details and calculate metrics
     const pollsWithChoices = await Promise.all(
       userVotes.map(async (vote) => {
-        const poll = await Poll.findById(vote.pollId); // Query by pollId as string
+        const poll = await Poll.findById(vote.pollId); // Query by pollId
 
         if (!poll) {
           return null; // Handle edge case if a poll is deleted
         }
 
+        // Calculate total votes for the poll
+        const totalVotes = poll.choices.reduce((sum, choice) => sum + choice.votes, 0);
+
+        // Find the choice with the highest percentage votes
+        let highestChoice = null;
+        let highestPercentage = 0;
+
+        poll.choices.forEach((choice) => {
+          const percentage =
+            totalVotes > 0 ? ((choice.votes / totalVotes) * 100).toFixed(2) : 0;
+
+          if (percentage > highestPercentage) {
+            highestPercentage = percentage;
+            highestChoice = {
+              choiceText: choice.text,
+              percentage: `${percentage}%`,
+            };
+          }
+        });
+
+        // Find the user's voted choice(s)
+        const votedChoice = poll.choices
+          .filter((choice) => vote.choiceIds.includes(choice._id.toString()))
+          .map((choice) => ({
+            choiceText: choice.text,
+            percentage: totalVotes > 0 ? ((choice.votes / totalVotes) * 100).toFixed(2) : '0.00%',
+          }));
+
         return {
           pollTitle: poll.title,
           pollDescription: poll.description,
-          votedChoice: poll.choices.filter((choice) =>
-            vote.choiceIds.includes(choice._id.toString())
-          ),
+          userVotedChoice: votedChoice,
+          highestVotedChoice: highestChoice,
         };
       })
     );
 
     // Filter out null values in case of deleted polls
     const filteredPolls = pollsWithChoices.filter((poll) => poll !== null);
-    console.log('also wont work', filteredPolls );
+    console.log('Filtered Polls:', filteredPolls);
 
     res.status(200).json({
       message: 'User votes retrieved successfully',
@@ -322,93 +396,143 @@ exports.reportPoll = async (req, res) => {
 
 
 
+
 exports.notifyUsersAboutPolls = async () => {
   try {
     const currentDate = new Date();
-    // const oneDayFromNow = new Date();
-    // const twoDaysFromNow = new Date();
+
+    // Define date ranges
     const threeDaysFromNow = new Date();
-    // oneDayFromNow.setDate(currentDate.getDate() + 1);
-    // twoDaysFromNow.setDate(currentDate.getDate() + 2);
     threeDaysFromNow.setDate(currentDate.getDate() + 3);
 
-    console.log('Current date:', currentDate);
-    console.log('Three days from now:', threeDaysFromNow);
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(currentDate.getDate() + 7);
 
-    const allPolls = await Poll.find({});
-console.log('All polls in database:', JSON.stringify(allPolls, null, 2));
+    const oneMonthFromNow = new Date();
+    oneMonthFromNow.setMonth(currentDate.getMonth() + 1);
 
+    const twoMonthsFromNow = new Date();
+    twoMonthsFromNow.setMonth(currentDate.getMonth() + 2);
 
-    // Query for polls that are active and about to expire or upcoming
-    const pollsToNotify = await Poll.find({
+    // Fetch polls for each range
+    const pollsWithin3Days = await Poll.find({
       $or: [
-        {
-          isActive: true,
-          expirationDate: { $gte: currentDate, $lte: threeDaysFromNow }, // Active and about to expire
-        },
-        {
-          isActive: false,
-          startDate: { $gte: currentDate, $lte: threeDaysFromNow }, // Upcoming polls
-        },
+        { expirationDate: { $gte: currentDate, $lte: threeDaysFromNow } },
+        { startDate: { $gte: currentDate, $lte: threeDaysFromNow } },
       ],
     });
 
-    if (pollsToNotify.length === 0) {
-      console.log('No polls to notify users about.');
-      return;
-    }
+    const pollsWithin3to7Days = await Poll.find({
+      $or: [
+        { expirationDate: { $gte: threeDaysFromNow, $lte: sevenDaysFromNow } },
+        { startDate: { $gte: threeDaysFromNow, $lte: sevenDaysFromNow } },
+      ],
+    });
 
-    console.log('Matching polls:', pollsToNotify);
-    console.log('Matching polls:', JSON.stringify(pollsToNotify, null, 2));
+    const pollsWithin1Month = await Poll.find({
+      $or: [
+        { expirationDate: { $gte: sevenDaysFromNow, $lte: oneMonthFromNow } },
+        { startDate: { $gte: sevenDaysFromNow, $lte: oneMonthFromNow } },
+      ],
+    });
 
+    const pollsWithin2Months = await Poll.find({
+      $or: [
+        { expirationDate: { $gte: oneMonthFromNow, $lte: twoMonthsFromNow } },
+        { startDate: { $gte: oneMonthFromNow, $lte: twoMonthsFromNow } },
+      ],
+    });
+
+    // Log results for debugging
+    console.log('Polls within 3 days:', pollsWithin3Days);
+    console.log('Polls within 3-7 days:', pollsWithin3to7Days);
+    console.log('Polls within 1 month:', pollsWithin1Month);
+    console.log('Polls within 2 months:', pollsWithin2Months);
 
     // Fetch all registered users' emails
     const users = await User.find({}, 'email');
-    //const users = await User.find({}, 'email');
-console.log('Registered users:', JSON.stringify(users, null, 2));
-
     const emailList = users.map((user) => user.email);
-
-    console.log('Registered users:', emailList);
-
 
     if (emailList.length === 0) {
       console.log('No registered users to notify.');
       return;
     }
 
-    // Construct email content
-    const pollDetails = pollsToNotify.map((poll) => {
-      const status = poll.active ? 'Active (about to expire)' : 'Upcoming';
-      return `Title: ${poll.title}, Status: ${status}, Date: ${poll.active ? poll.expirationDate.toISOString() : poll.startDate.toISOString()}`;
-    });
 
+    const generateTable = (polls) => {
+      if (polls.length === 0) {
+        return `<tr><td colspan="3">No polls found</td></tr>`;
+      }
+      return polls
+        .map(
+          (poll) => `
+            <tr>
+              <td>${poll.title}</td>
+              <td>${poll.isActive ? 'Active' : 'Upcoming'}</td>
+              <td>${poll.isActive ? poll.expirationDate.toISOString() : poll.startDate.toISOString()}</td>
+            </tr>
+          `
+        )
+        .join('');
+    };
+    
     const emailContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        h2 { color: #333; }
+        h3 { color: #555; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; color: #333; }
+        pre { background: #f9f9f9; padding: 10px; border-radius: 5px; font-family: monospace; }
+        .section { margin-bottom: 20px; }
+      </style>
+    </head>
+    <body>
       <h2>Poll Notifications</h2>
-      <p>Here are the polls within the 3-day range:</p>
-      <ul>${pollDetails.map((detail) => `<li>${detail}</li>`).join('')}</ul>
+      <p>Here are the polls categorized by their timelines:</p>
+      
+      <div class="section">
+        <h3>Polls within the next 3 days:</h3>
+        <table>
+          <thead>
+            <tr><th>Title</th><th>Status</th><th>Date</th></tr>
+          </thead>
+          <tbody>${generateTable(pollsWithin3Days)}</tbody>
+        </table>
+      </div>
+    
+      <div class="section">
+        <h3>Polls starting in 3-7 days:</h3>
+        <table>
+          <thead>
+            <tr><th>Title</th><th>Status</th><th>Date</th></tr>
+          </thead>
+          <tbody>${generateTable(pollsWithin3to7Days)}</tbody>
+        </table>
+      </div>
+    
+      <div class="section">
+        <h3>Polls starting within 1 month:</h3>
+        <table>
+          <thead>
+            <tr><th>Title</th><th>Status</th><th>Date</th></tr>
+          </thead>
+          <tbody>${generateTable(pollsWithin1Month)}</tbody>
+        </table>
+      </div>
+    </body>
+    </html>
     `;
-    try{
-    // Send email
-    await sendMail(
-      emailList,
-      'Poll Notifications',
-      emailContent
-    );
-    // try{
-    // await sendMail(
-    //   'palakmishra170101@gmail.com',
-    //   'Poll Notifications',
-    //   '<p>This is a test email</p>'
-    // );
+    
 
-    console.log('Email payload:', { to, subject, text });
-
+    // Send email to all users
+    await sendMail(emailList, 'Poll Notifications', emailContent);
 
     console.log('Poll notifications sent successfully.');
-  } catch(error){
-    console.log('error sending email', error.message);
-  }
   } catch (error) {
     console.error('Error in notifying users about polls:', error.message);
   }

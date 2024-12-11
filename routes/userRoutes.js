@@ -3,8 +3,7 @@ const upload = require('../middlewares/multer'); // Multer for file uploads
 const { 
   uploadProfilePicture, 
   updateBioAndInterests, 
-  removeInterest, 
-  listInterests 
+  getUserProfile
 } = require('../controllers/profileController');
 const { auth, roleAuthorization } = require('../middlewares/authMiddleware');
 
@@ -15,14 +14,8 @@ router.post('/upload-profile', auth, roleAuthorization(['Voter']), upload.single
 
 // Update Bio
 router.put('/update-profile', auth, roleAuthorization(['Voter']), updateBioAndInterests);
-// router.put('/update-bio', (req, res) => {
-//     res.send('Test update-bio route works');
-//   });
-  
 
-// Manage Interests
-//router.post('/add-interest', auth, roleAuthorization(['Voter']), addInterest);
-router.delete('/remove-interest', auth, roleAuthorization(['Voter']), removeInterest);
-router.get('/list-interests', auth, roleAuthorization(['Voter']), listInterests);
+//fetch profile
+router.get('/profile', auth, roleAuthorization(['Voter']), getUserProfile );
 
 module.exports = router;
