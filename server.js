@@ -5,9 +5,11 @@ require('dotenv').config();
 const cron = require('node-cron');
 const Poll = require('./models/poll'); 
 const mongoose = require('mongoose');
+const cors = require('cors')
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const { notifyUsersAboutPolls } = require('./controllers/pollController');
 
