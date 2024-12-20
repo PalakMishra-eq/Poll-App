@@ -10,12 +10,12 @@ const { auth, roleAuthorization } = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 // Profile Picture Upload
-router.post('/upload-profile', auth, roleAuthorization(['Voter']), upload.single('profilePicture'), uploadProfilePicture);
+router.post('/upload-profile', auth, roleAuthorization(['Voter', 'Admin']), upload.single('profilePicture'), uploadProfilePicture);
 
 // Update Bio
-router.put('/update-profile', auth, roleAuthorization(['Voter']), updateBioAndInterests);
+router.put('/update-profile', auth, roleAuthorization(['Voter', 'Admin']), updateBioAndInterests);
 
 //fetch profile
-router.get('/profile', auth, roleAuthorization(['Voter']), getUserProfile );
+router.get('/profile', auth, roleAuthorization(['Voter', 'Admin']), getUserProfile );
 
 module.exports = router;
