@@ -537,3 +537,47 @@ exports.notifyUsersAboutPolls = async () => {
     console.error('Error in notifying users about polls:', error.message);
   }
 };
+
+
+
+
+exports.getPollDetails = async (req, res) => {
+  try {
+    const { pollId } = req.params;
+
+    // Validate ObjectId format
+    if (!pollId || !pollId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'Invalid poll ID format' });
+    }
+
+    // Fetch poll by ID
+    const poll = await Poll.findById(pollId);
+
+    if (!poll) {
+      return res.status(404).json({ error: 'Poll not found' });
+    }
+
+    // Format the response
+    const pollDetails = {
+      _id: poll._id.toString(),
+      title: poll.title,
+      question: poll.question,
+      pollType: poll.pollType,
+      expirationDate: poll.expirationDate,
+      startDate: poll.startDate,
+      createdBy: poll.createdBy, // Include createdBy if needed
+      choices: poll.choices.map((choice) => ({
+        _id: choice._id.toString(), // Ensure ObjectId is a string
+        text: choice.text,
+        votes: choice.votes, // Include votes if needed
+      })),
+    };
+
+    res.status(200).json(pollDetails);
+  } catch (error) {
+    console.error('Error fetching poll details:', error.message);
+    res.status(500).json({ error: 'Failed to fetch poll details' });
+  }
+};
+
+
