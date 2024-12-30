@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { auth, roleAuthorization } = require('../middlewares/authMiddleware');
 const { checkPollStatus } = require('../middlewares/pollMiddleware');
-const { createPoll, voteOnPoll, deletePoll, getPollResults, searchPolls, getUserVotes, reportPoll, getPollDetails } = require('../controllers/pollController');
+const { createPoll, voteOnPoll, deletePoll, getPollResults, searchPolls, getUserVotes, reportPoll } = require('../controllers/pollController');
 const rateLimiter = require('../middlewares/rateLimiterMiddleware');
 
 // Route for admins to create a poll
