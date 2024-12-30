@@ -29,7 +29,7 @@ router.get('/polls', searchPolls);
 router.get('/my-votes', auth, roleAuthorization(['Voter']), getUserVotes);
 
 // Route to get poll details by ID
-router.get('/:pollId/details',  getPollDetails);
+//router.get('/:pollId/details',  getPollDetails);
 
 // Search and filter polls
 router.get('/', searchPolls);
