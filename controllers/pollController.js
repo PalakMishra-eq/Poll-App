@@ -189,13 +189,11 @@ exports.searchPolls = async (req, res) => {
 
     // Add status filter if specified
     if (status === 'active') {
-      query.isActive = true;
       query.expirationDate = { $gte: now };
     } else if (status === 'expired') {
       query.expirationDate = { $lt: now };
     } else if (status === 'upcoming') {
-      query.isActive = false;
-      query.expirationDate = { $gte: now };
+      query.startDate = { $gte: now };
     }
 
     // Sort options
