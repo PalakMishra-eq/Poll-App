@@ -15,7 +15,7 @@ router.post('/:pollId/vote', auth, checkPollStatus, rateLimiter,  roleAuthorizat
 router.delete('/:pollId/delete', auth,  roleAuthorization(['Admin']), deletePoll);
 
 // Route to get poll-based and voter-based insights (only accessible by admins)
-router.get('/:pollId/results', auth,  roleAuthorization(['Admin']), getPollResults);
+router.get('/:pollId/results', auth,  roleAuthorization(['Admin', 'Voter']), getPollResults);
 
 // Route for users to view their own vote for a specific poll
 //router.get('/:pollId/my-vote', auth, roleAuthorization(['Voter', 'Admin']), getUserVote);

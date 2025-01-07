@@ -10,7 +10,7 @@ const { auth, roleAuthorization } = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 // Profile Picture Upload
-router.post('/upload-profile', auth, roleAuthorization(['Voter', 'Admin']), upload.single('profilePicture'), uploadProfilePicture);
+router.post('/upload-profile', auth, roleAuthorization(['Voter', 'Admin ']), upload.single('profilePicture'), uploadProfilePicture);
 
 // Update Bio
 router.put('/update-profile', auth, roleAuthorization(['Voter', 'Admin']), updateBioAndInterests);
