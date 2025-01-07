@@ -77,7 +77,7 @@ exports.getUserProfile = async (req, res) => {
     const profileData= {
       username: user.username,
       email: user.email,
-      profilePicture: 'https://interpolls.onrender.com/'+user.profilePicture || '',
+      profilePicture: 'https://interpolls.onrender.com'+user.profilePicture || '',
       bio: user.bio || '',
       interests: user.interests || [],
 
